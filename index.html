@@ -2,33 +2,56 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Escáner QR con Telegram</title>
+  <title>Registro QR Offline</title>
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <h2>Escanea un QR</h2>
+  <h2>Escáner QR (Offline/Online)</h2>
   <div id="reader" style="width:300px;"></div>
 
   <script>
-    const token = "8319147777:AAHbKbbkNF4KHvl1q4MwRDf-7BURIy20taY";   // ⚠️ Reemplazar
-    const chat_id = "-4839758866";    // ⚠️ Reemplazar con el ID del grupo
+    const token = "8319147777:AAHbKbbkNF4KHvl1q4MwRDf-7BURIy20taY";        // ← Reemplaza
+    const chat_id = "-4839758866";         // ← Reemplaza con ID del grupo
 
-    function sendToTelegram(text) {
-      const url = `https://api.telegram.org/bot${token}/sendMessage`;
-
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chat_id,
-          text: text
-        })
-      })
-      .then(res => res.json())
-      .then(data => console.log("Enviado:", data))
-      .catch(err => console.error("Error:", err));
+    // --- Guardar en cola offline ---
+    function guardarOffline(mensaje) {
+      let cola = JSON.parse(localStorage.getItem("colaMensajes")) || [];
+      cola.push(mensaje);
+      localStorage.setItem("colaMensajes", JSON.stringify(cola));
+      console.log("Guardado offline:", mensaje);
     }
 
+    // --- Intentar enviar a Telegram ---
+    function enviarTelegram(mensaje) {
+      const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+      return fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id, text: mensaje })
+      });
+    }
+
+    // --- Procesar cola ---
+    async function procesarCola() {
+      let cola = JSON.parse(localStorage.getItem("colaMensajes")) || [];
+      if (cola.length === 0) return;
+
+      let pendientes = [];
+      for (let msg of cola) {
+        try {
+          let res = await enviarTelegram(msg);
+          if (!res.ok) throw new Error("Error envío");
+          console.log("Enviado:", msg);
+        } catch (e) {
+          pendientes.push(msg); // si falla, se queda en cola
+        }
+      }
+      localStorage.setItem("colaMensajes", JSON.stringify(pendientes));
+    }
+
+    // --- Registrar un QR ---
     function registrar(nombreQR) {
       navigator.geolocation.getCurrentPosition(pos => {
         const lat = pos.coords.latitude;
@@ -42,11 +65,13 @@ Fecha: ${fecha}
 Hora: ${hora}
 Ubicación: https://maps.google.com/?q=${lat},${lon}`;
 
-        sendToTelegram(mensaje);
-        alert("Registro enviado a Telegram ✅");
+        guardarOffline(mensaje);
+        procesarCola(); // intenta enviar si hay señal
+        alert("Registro guardado ✅ (se enviará cuando haya internet)");
       });
     }
 
+    // --- Escáner QR ---
     function onScanSuccess(decodedText, decodedResult) {
       registrar(decodedText);
     }
@@ -57,6 +82,14 @@ Ubicación: https://maps.google.com/?q=${lat},${lon}`;
       { fps: 10, qrbox: 250 },
       onScanSuccess
     );
+
+    // --- Detectar cuando vuelve el internet ---
+    window.addEventListener("online", procesarCola);
+
+    // --- Registrar service worker ---
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
   </script>
 </body>
 </html>
