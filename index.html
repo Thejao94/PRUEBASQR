@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Registro QR a WhatsApp</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0d6efd">
+</head>
+<body>
+  <h2>Escanear QR</h2>
+  <div id="reader" style="width:300px"></div>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script>
+    const phoneNumber = "593986753641"; // Cambia por el número de destino (con código país)
+
+    function formatDateTime(date) {
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    }
+
+    function openWhatsApp(name, latitude, longitude) {
+      const now = new Date();
+      const timestamp = formatDateTime(now);
+
+      const text = `Registro QR
+Nombre: ${name}
+Fecha: ${timestamp}
+Lat: ${latitude}, Lon: ${longitude}`;
+
+      const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
+      window.open(url, "_blank");
+    }
+
+    function getCoords(name) {
+      if (!navigator.geolocation) {
+        alert("Geolocalización no soportada en este dispositivo");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          openWhatsApp(name, pos.coords.latitude, pos.coords.longitude);
+        },
+        (err) => alert("Error obteniendo ubicación: " + err.message)
+      );
+    }
+
+    // Inicializar escáner de QR
+    const html5QrCode = new Html5Qrcode("reader");
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      (decodedText) => {
+        getCoords(decodedText); // decodedText = nombre del QR
+        html5QrCode.stop(); // detener después de leer uno
+      },
+      (errorMessage) => {}
+    );
+  </script>
+  <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js")
+      .then(() => console.log("Service Worker registrado"));
+  }
+</script>
+</body>
+</html>
