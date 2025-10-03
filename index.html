@@ -1,74 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>Registro QR a WhatsApp</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0d6efd">
+  <meta charset="UTF-8">
+  <title>Escáner QR con Telegram</title>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 <body>
-  <h2>Escanear QR</h2>
-  <div id="reader" style="width:300px"></div>
+  <h2>Escanea un QR</h2>
+  <div id="reader" style="width:300px;"></div>
 
-  <script src="https://unpkg.com/html5-qrcode"></script>
   <script>
-    const phoneNumber = "593960735057"; // Cambia por el número de destino (con código país)
+    const token = "8319147777:AAHbKbbkNF4KHvl1q4MwRDf-7BURIy20taY";   // ⚠️ Reemplazar
+    const chat_id = "-4839758866";    // ⚠️ Reemplazar con el ID del grupo
 
-    function formatDateTime(date) {
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    function sendToTelegram(text) {
+      const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chat_id,
+          text: text
+        })
+      })
+      .then(res => res.json())
+      .then(data => console.log("Enviado:", data))
+      .catch(err => console.error("Error:", err));
     }
 
-    function openWhatsApp(name, latitude, longitude) {
-      const now = new Date();
-      const timestamp = formatDateTime(now);
+    function registrar(nombreQR) {
+      navigator.geolocation.getCurrentPosition(pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const fecha = new Date().toLocaleDateString();
+        const hora = new Date().toLocaleTimeString();
 
-      const text = `Registro QR
-Nombre: ${name}
-Fecha: ${timestamp}
-Lat: ${latitude}, Lon: ${longitude}`;
+        const mensaje = `📍 Registro:
+Nombre: ${nombreQR}
+Fecha: ${fecha}
+Hora: ${hora}
+Ubicación: https://maps.google.com/?q=${lat},${lon}`;
 
-      const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
-      window.open(url, "_blank");
+        sendToTelegram(mensaje);
+        alert("Registro enviado a Telegram ✅");
+      });
     }
 
-    function getCoords(name) {
-      if (!navigator.geolocation) {
-        alert("Geolocalización no soportada en este dispositivo");
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          openWhatsApp(name, pos.coords.latitude, pos.coords.longitude);
-        },
-        (err) => alert("Error obteniendo ubicación: " + err.message)
-      );
+    function onScanSuccess(decodedText, decodedResult) {
+      registrar(decodedText);
     }
 
-    // Inicializar escáner de QR
     const html5QrCode = new Html5Qrcode("reader");
     html5QrCode.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: 250 },
-      (decodedText) => {
-        getCoords(decodedText); // decodedText = nombre del QR
-        html5QrCode.stop(); // detener después de leer uno
-      },
-      (errorMessage) => {}
+      onScanSuccess
     );
   </script>
-  <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js")
-      .then(() => console.log("Service Worker registrado"));
-  }
-</script>
 </body>
 </html>
-
-
-
