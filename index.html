@@ -32,7 +32,7 @@ Nombre: ${name}
 Fecha: ${timestamp}
 Lat: ${latitude}, Lon: ${longitude}`;
 
-      const url = ` https://chat.whatsapp.com/LxUoWrfcRPNEGrdIx0QLQw?mode=ems_wa_t?text=${encodeURIComponent(text)}`;
+      const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(text)}`;
       window.open(url, "_blank");
     }
 
@@ -69,5 +69,6 @@ Lat: ${latitude}, Lon: ${longitude}`;
 </script>
 </body>
 </html>
+
 
 
